@@ -1,4 +1,4 @@
-import BaseHTTPServer, urlparse, serial, ConfigParser
+import BaseHTTPServer, urlparse, serial, ConfigParser, re
 
 config = ConfigParser.ConfigParser()
 config.read(('lighted.conf', '/etc/lighted.conf'))
@@ -24,15 +24,15 @@ class Handler(BaseHTTPServer.BaseHTTPRequestHandler):
     bits = path.split('/')
     bits.pop(0) # Crap
 
-    if len(bits) != 4:
+    if len(bits) != 2:
         self.send_error(500)
         self.end_headers()
         self.send_header('Content-Type', 'text/html')
-        self.wfile.write('Bad request, should be in the format foo.com/device/r/g/b')
+        self.wfile.write('Bad request, should be in the format foo.com/device/r,g,b')
         return 
 
     devices = []
-    device = bits.pop(0)
+    device = bits.pop(0) # Device
     if (device == '_'):
         devices = dmxDevices.keys()
     else:
@@ -48,13 +48,22 @@ class Handler(BaseHTTPServer.BaseHTTPRequestHandler):
             self.wfile.write(', '.join(str(x) for x in dmxDevices.keys()))
             return 
 
-    for val in bits:
+    colour = bits.pop(0) # Colour
+    if re.match('\d+,\d+,\d+', colour):
+        rgb = colour.split(',')
+    elif re.match('[0-9ABCDEF]{,6}', colour):
+        rgb = [int(x, 16) for x in (colour[0:2], colour[2:4], colour[4:6])]
+
+    for val in rgb:
         if int(val) < 0 or int(val) > 255:
             self.send_error(500)
             self.end_headers()
             self.send_header('Content-Type', 'text/html')
             self.wfile.write('RGB value out of range, should be 0 <> 255')
             return 
+
+    from pprint import pprint
+    pprint(rgb)
 
     self.send_response(200)
     self.send_header('Content-type', 'text/html')
@@ -63,7 +72,8 @@ class Handler(BaseHTTPServer.BaseHTTPRequestHandler):
 
     for device in devices:
         for i in range(0, 3):
-            port.write("%sc%sw" % (dmxDevices[device] + i, bits[i]))
+            port.write("%sc%sw" % (dmxDevices[device] + i, rgb[i]))
+
 
 PORT = 8000
 httpd = BaseHTTPServer.HTTPServer(("", PORT), Handler)
