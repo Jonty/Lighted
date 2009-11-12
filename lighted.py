@@ -21,6 +21,10 @@ for device in offsets:
 
 class Handler(BaseHTTPServer.BaseHTTPRequestHandler):
 
+    # Disable logging DNS lookups
+    def address_string(self):
+        return str(self.client_address[0])
+
     def do_GET(self):
         url = urlparse.urlparse(self.path)
         params = urlparse.parse_qs(url.query)
