@@ -1,0 +1,93 @@
+<html>
+<head>
+  <title>Hackspace Lights</title>
+  <script type="text/javascript" src="resources/jquery.min.js"></script>
+  <script type="text/javascript" src="resources/shadedborder.js"></script>
+  <script type="text/javascript" src="resources/farbtastic.js"></script>
+  <link rel="stylesheet" href="resources/farbtastic.css" type="text/css" />
+  
+  <style>
+    body {
+      background-color: #f2f3f4;
+      padding: 20px;
+    }
+    #my-border {
+      margin: 0 auto;
+      padding: 20px;
+      width: 200px;
+      color: #fff;
+      text-align: center;
+    }
+    #my-border, #my-border .sb-inner {
+      background: #888 url(resources/grad4.png) repeat-x;
+      background: #e0e0e0 url(resources/grad3.png) repeat-x;
+    }
+    #lights {
+      padding: 0.5em 0;
+    }
+    .light {
+      display: inline-block;
+      width: 60px;
+      height: 71px;
+    }
+    .lantern {
+      background: url(resources/ledpar.png) no-repeat;
+      position: absolute;
+      width: 60px;
+      height: 71px;
+      left: 0; top: 0;
+    }
+    .aperture {
+      position: absolute;
+      height: 26px;
+      width: 14px;
+      left: 30px;
+      top: 32px;
+      background-color: black;
+    }
+    .light { opacity: 0.5 }
+    .selected { opacity: 1 }
+  </style>
+  <!-- TODO: fix for opacity on IE - doesn't degrade -->
+  <script type="text/javascript">
+  $(document).ready(function() {
+    var myBorder = RUZEE.ShadedBorder.create({ corner:8, shadow:16 });
+    myBorder.render('my-border');
+    for(var i = 1; i <= 3; i++) {
+      $('<div class="light selected"><div class="aperture">&nbsp;</div><div class="lantern">&nbsp;</div></div>')
+          .attr('lightid', i)
+          .appendTo('#lights');
+    }
+    $('.light').click(function() {
+      $(this).toggleClass('selected');
+    });
+    
+    $('#colorpicker').farbtastic(function(color) {
+      var lights = [];
+      $('.light.selected .aperture')
+          .css('background-color', color)
+          .each(function() {
+            lights.push($(this).parent().attr('lightid'));
+          });
+
+      if(lights.length == 0) return;
+      lights = lights.join(',');
+      var url = '/' + lights + '/' + color.replace('#', '');
+      
+      <!-- Use iframe instead -->
+      $.ajax({
+        url: url,
+        type: 'GET',
+        dataType: 'script'
+      });
+    });
+  });
+  </script>
+</head><body>
+  <div id="my-border">
+  <div id="logo"></div>
+  <div id="lights"></div>
+  <div id="colorpicker"></div>
+  <div id="debug"></div>
+  </div>
+</body></html>

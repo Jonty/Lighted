@@ -1,4 +1,4 @@
-import BaseHTTPServer, urlparse, serial, ConfigParser, re, time
+import BaseHTTPServer, urlparse, serial, ConfigParser, re, time, shutil
 
 config = ConfigParser.ConfigParser()
 config.read(('lighted.conf', '/etc/lighted.conf'))
@@ -33,6 +33,25 @@ class Handler(BaseHTTPServer.BaseHTTPRequestHandler):
         bits = path.split('/')
         bits.pop(0) # Crap
 
+        # Serve the root control page
+        if len(bits) == 1 and bits[0] == '':
+            bits = ['resources', 'index.html']
+
+        # Serve the control page resources
+        if len(bits) and bits[0] == 'resources':
+            try:
+                f = open('/'.join(bits), 'rb')
+            except IOError:
+                self.send_error(404, "File not found")
+                return
+            
+            self.send_response(200)
+            self.end_headers()
+            shutil.copyfileobj(f, self.wfile)
+            f.close()
+            return
+
+        # Process a light change control request
         if len(bits) != 2:
             self.send_error(500)
             self.end_headers()
