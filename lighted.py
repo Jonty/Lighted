@@ -1,7 +1,13 @@
-import BaseHTTPServer, urlparse, serial, ConfigParser, re, time, shutil
+#!/usr/bin/env python
+
+import BaseHTTPServer, urlparse, serial, ConfigParser, re, time, shutil, sys
 
 config = ConfigParser.ConfigParser()
-config.read(('lighted.conf', '/etc/lighted.conf'))
+config.read((
+    'lighted.conf',
+    sys.path[0] + '/lighted.conf',
+    '/etc/lighted.conf'
+))
 
 serialPort = config.get('lighted', 'serialport')
 port = serial.Serial(serialPort, 115200, timeout=1)
@@ -9,15 +15,15 @@ port = serial.Serial(serialPort, 115200, timeout=1)
 devices = config.get('lighted', 'dmxdevices')
 offsets = devices.split(',')
 
-devices_old = []
-rgb_old = []
-
 dmxDevices = {}
 offset = 0
 for device in offsets:
     offset += 1
     dmxDevices[offset] = int(device)
 
+# Default to everything off
+devices_old = dmxDevices.keys()
+rgb_old = ['0','0','0']
 
 class Handler(BaseHTTPServer.BaseHTTPRequestHandler):
 
@@ -35,14 +41,13 @@ class Handler(BaseHTTPServer.BaseHTTPRequestHandler):
         elif path == '/favicon.ico':
             path = '/resources/favicon.ico'
 
-        bits = path.split('/')
-        bits.pop(0) # Ignore initial slash
+        bits = path.lstrip('/').split('/')
 
         # Serve the control page resources
-        if len(bits) and bits[0] == 'resources':
+        if bits[0] == 'resources':
 
             try:
-                f = open('%s/%s' % (bits[0], bits[1]), 'rb')
+                f = open('%s/%s/%s' % (sys.path[0], bits[0], bits[1]), 'rb')
             except IOError, e:
                 self.send_error(404, "File not found")
                 return
@@ -92,12 +97,13 @@ class Handler(BaseHTTPServer.BaseHTTPRequestHandler):
                   raise ValueError('RGB value out of range, should be 0 <> 255')
 
         except ValueError, e:
-                self.send_error(500)
-                self.end_headers()
-                self.wfile.write(e)
-                return 
+            self.send_error(500)
+            self.end_headers()
+            self.wfile.write(e)
+            return 
 
         self.send_response(200)
+        self.send_header('Content-type', 'text/html')
         self.end_headers()
         self.wfile.write('OK')
         self.setColour(devices, rgb)
